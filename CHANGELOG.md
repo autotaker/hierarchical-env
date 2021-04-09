@@ -1,4 +1,4 @@
-# Revision history for start-haskell
+# Revision history for hierarchical-env
 
 ## 0.1.0.0 -- YYYY-mm-dd
 

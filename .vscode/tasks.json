@@ -6,7 +6,7 @@
         {
             "label": "cabal-fmt",
             "type": "shell",
-            "command": "cabal-fmt -i start-haskell.cabal",
+            "command": "cabal-fmt -i hierarchical-env.cabal",
             "presentation": {
                 "echo": true,
                 "reveal": "never",
