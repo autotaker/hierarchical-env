@@ -4,6 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -ddump-splices -ddump-to-file #-}
 
 module Control.Env.Hierarchical.THSpec where
 
@@ -39,6 +40,8 @@ mkEnv =
     }
 
 deriveEnv ''Env ''Root
+
+--
 
 spec :: Spec
 spec = describe "deriveEnv" $ do

@@ -1,14 +1,16 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Control.Env.Hierarchical.TH where
+module Control.Env.Hierarchical.TH (deriveEnv) where
 
-import Control.Applicative (Alternative (empty))
 import Control.Env.Hierarchical.Internal
-import Control.Monad (filterM, forM, zipWithM)
-import Data.Function
+  ( Environment (Fields, Fields1, Super),
+    Field (fieldL),
+  )
+import Control.Monad (filterM, zipWithM)
+import Data.Function ((&))
 import Language.Haskell.TH
 import qualified Language.Haskell.TH.Datatype as D
-import Lens.Micro.TH
+import Lens.Micro.TH (makeLensesFor)
 
 {-
 data Env f a b = Env {
@@ -23,7 +25,7 @@ deriveEnvironment ''Env ''Root
 ==>
 instance Environment (Env f a b) where
     type Super (Env f a b) = Root
-    type Fields (Env f a b) = '[Int, a,Obj Env, Obj2 b Env, f Env]
+    type Fields (Env f a b) = '[Env f a b, Int, a,Obj Env, Obj2 b Env, f Env]
     type Fields1 (Env f a b) = '[Obj, Obj2 b, f]
 
 instance Field Int (Env f a b) where
@@ -69,11 +71,12 @@ deriveEnv envName rootName = do
 --     $(makeLensesFor ["field1", "l"] ''Env)
 deriveField :: (Name, Type) -> Type -> Name -> Q Dec
 deriveField (envName, envType) fieldType fieldName =
-  instanceD (cxt []) fieldInstType [dec]
+  instanceD (cxt []) fieldInstType [inlineDec, dec]
   where
     fieldInstType =
       conT ''Field `appT` pure fieldType `appT` pure envType
     -- fieldL = l where $(makeLensesFor ...)
+    inlineDec = pragInlD 'fieldL Inline FunLike AllPhases
     dec = do
       lensDecs <- makeLensesFor [(nameBase fieldName, "l")] envName
       let lhs = varP 'fieldL
