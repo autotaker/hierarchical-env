@@ -86,13 +86,15 @@ fields1 ty consInfo =
   [f | AppT f x <- D.constructorFields consInfo, x == ty]
     & filterM headIsNotTypeSynonym
   where
-    headIsNotTypeSynonym = go
+    headIsNotTypeSynonym _ty = go _ty
       where
         go (AppT ty' _) = go ty'
         go (ConT name) = do
           r <- reify name
           case r of
-            TyConI TySynD {} -> pure False
+            TyConI TySynD {} -> do
+              reportWarning ("Skipping type synonym field1: " ++ pprint _ty ++ ". Please use newtype")
+              pure False
             _ -> pure True
         go _ = pure True
 

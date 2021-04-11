@@ -21,7 +21,7 @@ data Env f a = Env
     _y :: Bool,
     _z :: Maybe (Env f a),
     _w :: f a (Env f a),
-    _v :: F (Env f a)
+    _v :: F (Env f a) -- Type Synonym is not allowed for Field1
   }
 
 deriveEnv ''Env ''Root
