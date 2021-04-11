@@ -53,6 +53,9 @@ instance Environment Root where
 class Field a env where
   fieldL :: Lens' env a
 
+instance Field env env where
+  fieldL = id
+
 class Trans a (l :: [Type]) s | a l -> s where
   transL :: Lens' s a
 
