@@ -2,7 +2,10 @@
 
 module Control.Env.Hierarchical.TH where
 
+import Control.Applicative (Alternative (empty))
 import Control.Env.Hierarchical.Internal
+import Control.Monad (filterM)
+import Data.Function
 import Language.Haskell.TH
 import qualified Language.Haskell.TH.Datatype as D
 import Lens.Micro.TH
@@ -47,32 +50,57 @@ deriveEnv envName rootName = do
   pure [dec]
 
 envInstance :: D.DatatypeInfo -> Type -> Q Dec
-envInstance info rootType =
+envInstance info rootType = do
   -- instance Environment $envName where
   --   $decs
+  consInfo <- case D.datatypeCons info of
+    [consInfo] -> pure consInfo
+    _ -> fail "Multiple costructors"
+  let envInstType =
+        conT ''Environment
+          `appT` envTypeQ
+      envTypeQ = pure envType
+      envType = D.datatypeType info
+      decs :: [DecQ]
+      decs = [superDec, fieldsDec, fields1Dec]
+      tyVars = D.datatypeVars info
+      -- type Super ($envName $typeVars) = $rootType
+      superDec = tySynInstD (tySynEqn (Just tyVars) lhs rhs)
+        where
+          lhs = conT ''Super `appT` envTypeQ
+          rhs = pure rootType
+      -- type Fields ($envName $typeVars) = '[]
+      fieldsDec = tySynInstD (tySynEqn (Just tyVars) lhs rhs)
+        where
+          lhs = conT ''Fields `appT` envTypeQ
+          rhs = promotedListT (envType : fields consInfo)
+      -- type Fields1 ($envName $typeVars) = '[]
+      fields1Dec = tySynInstD (tySynEqn (Just tyVars) lhs rhs)
+        where
+          lhs = conT ''Fields1 `appT` envTypeQ
+          rhs = promotedListT =<< fields1 envType consInfo
   instanceD (cxt []) envInstType decs
+
+fields1 :: Type -> D.ConstructorInfo -> Q [Type]
+fields1 ty consInfo =
+  [f | AppT f x <- D.constructorFields consInfo, x == ty]
+    & filterM headIsNotTypeSynonym
   where
-    envInstType =
-      conT ''Environment
-        `appT` envType
-    envType = pure $ D.datatypeType info
-    decs :: [DecQ]
-    decs = [superDec, fieldsDec, fields1Dec]
-    tyVars = D.datatypeVars info
-    -- type Super ($envName $typeVars) = $rootType
-    superDec = tySynInstD (tySynEqn (Just tyVars) lhs rhs)
+    headIsNotTypeSynonym = go
       where
-        lhs = conT ''Super `appT` envType
-        rhs = pure rootType
-    -- type Fields ($envName $typeVars) = '[]
-    fieldsDec = tySynInstD (tySynEqn (Just tyVars) lhs rhs)
-      where
-        lhs = conT ''Fields `appT` envType
-        rhs = promotedNilT
-    -- type Fields1 ($envName $typeVars) = '[]
-    fields1Dec = tySynInstD (tySynEqn (Just tyVars) lhs rhs)
-      where
-        lhs = conT ''Fields1 `appT` envType
-        rhs = promotedNilT
+        go (AppT ty' _) = go ty'
+        go (ConT name) = do
+          r <- reify name
+          case r of
+            TyConI TySynD {} -> pure False
+            _ -> pure True
+        go _ = pure True
+
+promotedListT :: [Type] -> TypeQ
+promotedListT =
+  foldr (appT . appT promotedConsT . pure) promotedNilT
+
+fields :: D.ConstructorInfo -> [Type]
+fields = D.constructorFields
 
 -- type Fields ($envName $typeVars) = $fields
