@@ -47,6 +47,7 @@ library
 
   -- cabal-fmt: expand src
   exposed-modules:
+    Control.Env.Hierarchical
     Control.Env.Hierarchical.Internal
     Control.Env.Hierarchical.TH
     MyLib
@@ -65,6 +66,7 @@ test-suite hierarchical-env-test
   other-modules:
     Control.Env.Hierarchical.InternalSpec
     Control.Env.Hierarchical.THSpec
+    Control.Env.HierarchicalSpec
     MyLibSpec
 
   build-depends:  hierarchical-env

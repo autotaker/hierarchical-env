@@ -89,9 +89,7 @@ envInstance (envType, consInfo, tyVars) rootType =
   where
     -- instance Environment $envName where
     --   $decs
-    envInstType =
-      conT ''Environment
-        `appT` envTypeQ
+    envInstType = conT ''Environment `appT` envTypeQ
     envTypeQ = pure envType
     -- envType = D.datatypeType info
     decs :: [DecQ]
@@ -102,12 +100,12 @@ envInstance (envType, consInfo, tyVars) rootType =
       where
         lhs = conT ''Super `appT` envTypeQ
         rhs = pure rootType
-    -- type Fields ($envName $typeVars) = '[]
+    -- type Fields ($envName $typeVars) = '[$field1 ... $field2]
     fieldsDec = tySynInstD (tySynEqn (Just tyVars) lhs rhs)
       where
         lhs = conT ''Fields `appT` envTypeQ
         rhs = promotedListT (envType : D.constructorFields consInfo)
-    -- type Fields1 ($envName $typeVars) = '[]
+    -- type Fields1 ($envName $typeVars) = '[$obj1 ... $obj2]
     fields1Dec = tySynInstD (tySynEqn (Just tyVars) lhs rhs)
       where
         lhs = conT ''Fields1 `appT` envTypeQ
