@@ -15,16 +15,17 @@
 
 module Control.Env.Hierarchical.Internal
   ( Environment (..),
+    Super,
     Root (..),
     Field (..),
     Trans (..),
     type (<:),
-    Obj (Obj),
+    SomeInterface (SomeInterface),
     Has,
     Has1,
     getL,
-    getObj,
-    runObj,
+    ifaceL,
+    runIF,
   )
 where
 
@@ -38,15 +39,17 @@ import Lens.Micro (Lens')
 import Lens.Micro.Mtl (view)
 import RIO (RIO, runRIO)
 
+type family Super x
+
 class Environment env where
-  type Super env
   type Fields1 env :: [Type -> Type]
   type Fields env :: [Type]
 
 data Root = Root
 
+type instance Super Root = TypeError ('Text "No super environment for Root")
+
 instance Environment Root where
-  type Super Root = TypeError ('Text "No super environment for Root")
   type Fields1 Root = '[]
   type Fields Root = '[]
 
@@ -84,8 +87,8 @@ type family FindEnv1 (f :: Type -> Type) (envs :: [Type]) where
 
 type (<:) env env' = Trans env' (Addr env env') env
 
-data Obj f env where
-  Obj :: Lens' env' (f env') -> Lens' env env' -> Obj f env
+data SomeInterface f env where
+  SomeInterface :: Lens' env' (f env') -> Lens' env env' -> SomeInterface f env
 
 type HasAux a env env' = (env <: env', Field a env')
 
@@ -103,11 +106,13 @@ inheritL = transL @env' @(Addr env env')
 getL :: forall a env. Has a env => Lens' env a
 getL = inheritL @env @(FindEnv a (Anscestors env)) . fieldL
 
-getObj :: forall f env. Has1 f env => Obj f env
-getObj = Obj (fieldL @(f (FindEnv1 f (Anscestors env)))) inheritL
+ifaceL :: forall f env. Has1 f env => SomeInterface f env
+ifaceL = SomeInterface (fieldL @(f (FindEnv1 f (Anscestors env)))) inheritL
 
-runObj :: Obj f env -> (forall env'. f env' -> RIO env' a) -> RIO env a
-runObj (Obj objL superL) body = do
-  obj <- view $ superL . objL
-  env <- view superL
-  runRIO env (body obj)
+runIF :: forall f env a. Has1 f env => (forall env'. f env' -> RIO env' a) -> RIO env a
+runIF body =
+  case ifaceL @f of
+    SomeInterface _ifaceL superL -> do
+      iface <- view $ superL . _ifaceL
+      env <- view superL
+      runRIO env (body iface)

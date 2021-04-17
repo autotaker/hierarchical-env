@@ -8,12 +8,12 @@
 module Control.Env.Hierarchical.InternalSpec where
 
 import Control.Env.Hierarchical.Internal
-  ( Environment (Fields, Fields1, Super),
+  ( Environment (Fields, Fields1),
     Field (fieldL),
     Root,
+    Super,
     getL,
-    getObj,
-    runObj,
+    runIF,
   )
 import Lens.Micro.Mtl (view)
 import Lens.Micro.TH (makeLenses)
@@ -56,14 +56,16 @@ data Env2 = Env2
 makeLenses ''Env2
 
 instance Environment Env1 where
-  type Super Env1 = Root
   type Fields1 Env1 = '[Obj1]
   type Fields Env1 = '[Env1, Obj1 Env1, Param1]
 
+type instance Super Env1 = Root
+
 instance Environment Env2 where
-  type Super Env2 = Env1
   type Fields1 Env2 = '[Obj2]
   type Fields Env2 = '[Env2, Env1, Obj2 Env2, Param2]
+
+type instance Super Env2 = Env1
 
 instance Field Env1 Env1 where
   fieldL = id
@@ -103,8 +105,8 @@ env2Impl =
     { _obj2 =
         Obj2
           { _method3 = do
-              x <- runObj getObj _method1
-              y <- runObj getObj _method2
+              x <- runIF _method1
+              y <- runIF _method2
               pure $ x + y,
             _method4 = pure 4
           },
@@ -143,16 +145,16 @@ spec = do
       n <- runRIO env2Impl $ do
         view (getL @Param2)
       n `shouldBe` Param2 2
-  describe "getObj/runObj" $ do
-    it "runObj (getObj @Obj1) from Env1" $ do
+  describe "runIF" $ do
+    it "runIF @Obj1 from Env1" $ do
       n <- runRIO env1Impl $ do
-        runObj (getObj @Obj1) _method1
+        runIF @Obj1 _method1
       n `shouldBe` 1
-    it "runObj (getObj @Obj1) from Env2" $ do
+    it "runIF @Obj1 from Env2" $ do
       n <- runRIO env2Impl $ do
-        runObj (getObj @Obj1) _method1
+        runIF @Obj1 _method1
       n `shouldBe` 1
-    it "runObj (getObj @Obj2) from Env2" $ do
+    it "runIF @Obj2 from Env2" $ do
       n <- runRIO env2Impl $ do
-        runObj (getObj @Obj2) _method3
+        runIF @Obj2 _method3
       n `shouldBe` 3

@@ -39,7 +39,9 @@ mkEnv =
       _v = const 0
     }
 
-deriveEnv ''Env ''Root
+deriveEnv ''Env
+
+type instance Super (Env f a) = Root
 
 --
 

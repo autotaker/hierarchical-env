@@ -5,12 +5,10 @@ module Control.Env.Hierarchical
     Root (..),
     Field (..),
     type (<:),
-    Obj,
     Has,
     Has1,
     getL,
-    getObj,
-    runObj,
+    runIF,
     deriveEnv,
   )
 where
@@ -20,11 +18,9 @@ import Control.Env.Hierarchical.Internal
     Field (fieldL),
     Has,
     Has1,
-    Obj,
     Root (Root),
     getL,
-    getObj,
-    runObj,
+    runIF,
     type (<:),
   )
 import Control.Env.Hierarchical.TH (deriveEnv)

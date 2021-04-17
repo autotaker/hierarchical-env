@@ -3,7 +3,7 @@
 module Control.Env.Hierarchical.TH (deriveEnv) where
 
 import Control.Env.Hierarchical.Internal
-  ( Environment (Fields, Fields1, Super),
+  ( Environment (Fields, Fields1),
     Field (fieldL),
   )
 import Control.Monad (filterM, zipWithM)
@@ -21,10 +21,9 @@ data Env f a b = Env {
     _v :: f Env
 
 }
-deriveEnvironment ''Env ''Root
+deriveEnvironment ''Env
 ==>
 instance Environment (Env f a b) where
-    type Super (Env f a b) = Root
     type Fields (Env f a b) = '[Env f a b, Int, a,Obj Env, Obj2 b Env, f Env]
     type Fields1 (Env f a b) = '[Obj, Obj2 b, f]
 
@@ -44,9 +43,8 @@ instance Field (f Env) (Env f a b) where
   fieldL = v
 -}
 
-deriveEnv :: Name -> Name -> Q [Dec]
-deriveEnv envName rootName = do
-  rootType <- conT rootName
+deriveEnv :: Name -> Q [Dec]
+deriveEnv envName = do
   envInfo <- D.reifyDatatype envName
   consInfo <- case D.datatypeCons envInfo of
     [consInfo] -> pure consInfo
@@ -57,7 +55,7 @@ deriveEnv envName rootName = do
   let envType = D.datatypeType envInfo
       tyVars = D.datatypeVars envInfo
       fields = D.constructorFields consInfo
-  dec <- envInstance (envType, consInfo, tyVars) rootType
+  dec <- envInstance (envType, consInfo, tyVars)
   decs <-
     zipWithM
       (deriveField (envName, envType))
@@ -83,8 +81,8 @@ deriveField (envName, envType) fieldType fieldName =
           rhs = varE (mkName "l")
       valD lhs (normalB rhs) (map pure lensDecs)
 
-envInstance :: (Type, D.ConstructorInfo, [TyVarBndr]) -> Type -> DecQ
-envInstance (envType, consInfo, tyVars) rootType =
+envInstance :: (Type, D.ConstructorInfo, [TyVarBndr]) -> DecQ
+envInstance (envType, consInfo, tyVars) =
   instanceD (cxt []) envInstType decs
   where
     -- instance Environment $envName where
@@ -93,13 +91,8 @@ envInstance (envType, consInfo, tyVars) rootType =
     envTypeQ = pure envType
     -- envType = D.datatypeType info
     decs :: [DecQ]
-    decs = [superDec, fieldsDec, fields1Dec]
+    decs = [fieldsDec, fields1Dec]
     -- tyVars = D.datatypeVars info
-    -- type Super ($envName $typeVars) = $rootType
-    superDec = tySynInstD (tySynEqn (Just tyVars) lhs rhs)
-      where
-        lhs = conT ''Super `appT` envTypeQ
-        rhs = pure rootType
     -- type Fields ($envName $typeVars) = '[$field1 ... $field2]
     fieldsDec = tySynInstD (tySynEqn (Just tyVars) lhs rhs)
       where

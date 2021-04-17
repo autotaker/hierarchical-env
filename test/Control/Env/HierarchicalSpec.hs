@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -9,8 +10,8 @@
 module Control.Env.HierarchicalSpec where
 
 import Control.Env.Hierarchical
-import Control.Env.Hierarchical.Internal (Environment (Fields, Fields1, Super))
-import Data.Functor.Contravariant
+import Control.Env.Hierarchical.Internal (Super)
+import Control.Method (Interface (IBase), mapBaseRIO)
 import Lens.Micro.TH
 import RIO
 import Test.Hspec
@@ -39,17 +40,10 @@ data FooObj env = FooObj
   { _fooMethod :: RIO env Text,
     _barMethod :: RIO env Bool
   }
+  deriving (Generic)
 
-instance Contravariant FooObj where
-  contramap f fooObj =
-    FooObj
-      { _fooMethod = do
-          env' <- asks f
-          runRIO env' (_fooMethod fooObj),
-        _barMethod = do
-          env' <- asks f
-          runRIO env' (_barMethod fooObj)
-      }
+instance Interface FooObj where
+  type IBase FooObj = RIO
 
 newtype Param1 = Param1 Int
 
@@ -58,29 +52,23 @@ newtype Param2 = Param2 Int
 makeLenses ''HogeObj
 makeLenses ''FooObj
 
-deriveEnv ''Env1 ''Root
-deriveEnv ''Env2 ''Env1
+deriveEnv ''Env1
+deriveEnv ''Env2
+deriveEnv ''Env3
 
-instance Environment (Env3 env) where
-  type Super (Env3 env) = env
-  type Fields (Env3 env) = '[Env3 env, env, Param2]
-  type Fields1 (Env3 env) = '[]
+type instance Super Env1 = Root
 
-instance Field env (Env3 env) where
-  fieldL = lens super (\x y -> x {super = y})
+type instance Super Env2 = Env1
 
-instance Field Param2 (Env3 env) where
-  fieldL = lens param2 (\x y -> x {param2 = y})
+type instance Super (Env3 env) = env
 
 example1 :: (Has1 HogeObj env, Has Param1 env) => RIO env Text
 example1 = do
   Param1 n <- view getL
-  runObj getObj (\x -> _hogeMethod x n)
+  runIF (\x -> _hogeMethod x n)
 
 example2 :: (Has1 FooObj env) => RIO env Text
-example2 = runObj getObj _fooMethod
-
-
+example2 = runIF _fooMethod
 
 mkEnv1 :: Env1
 mkEnv1 =
@@ -92,7 +80,7 @@ mkEnv1 =
 mkEnv2 :: Env2
 mkEnv2 =
   Env2
-    { foo = contramap mkEnv3 fooImpl,
+    { foo = mapBaseRIO mkEnv3 fooImpl,
       env1 = mkEnv1
     }
 
@@ -110,13 +98,13 @@ hogeImpl =
       _fugaMethod = \b -> pure $ not b
     }
 
--- 
+--
 fooImpl :: (Has1 HogeObj env, Has Param2 env) => FooObj env
 fooImpl =
   FooObj
     { _fooMethod = do
         Param2 n <- view getL
-        runObj getObj (\x -> _hogeMethod x n),
+        runIF (\x -> _hogeMethod x n),
       _barMethod = pure True
     }
 
