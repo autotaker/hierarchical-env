@@ -43,7 +43,6 @@ deriveEnv ''Env
 
 type instance Super (Env f a) = Root
 
---
 
 spec :: Spec
 spec = describe "deriveEnv" $ do

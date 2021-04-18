@@ -26,10 +26,7 @@ data Env2 = Env2
     foo :: FooObj Env2
   }
 
-data Env3 env = Env3
-  { super :: env,
-    param2 :: Param2
-  }
+data Env3 env = Env3 env Param2
 
 data HogeObj env = HogeObj
   { _hogeMethod :: Int -> RIO env Text,
@@ -65,7 +62,7 @@ type instance Super (Env3 env) = env
 example1 :: (Has1 HogeObj env, Has Param1 env) => RIO env Text
 example1 = do
   Param1 n <- view getL
-  runIF (\x -> _hogeMethod x n)
+  runIF (\x -> view hogeMethod x n)
 
 example2 :: (Has1 FooObj env) => RIO env Text
 example2 = runIF _fooMethod
@@ -85,11 +82,7 @@ mkEnv2 =
     }
 
 mkEnv3 :: env -> Env3 env
-mkEnv3 env =
-  Env3
-    { super = env,
-      param2 = Param2 5
-    }
+mkEnv3 env = Env3 env (Param2 5)
 
 hogeImpl :: HogeObj env
 hogeImpl =

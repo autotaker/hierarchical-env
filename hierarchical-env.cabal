@@ -53,7 +53,6 @@ library
     Control.Env.Hierarchical
     Control.Env.Hierarchical.Internal
     Control.Env.Hierarchical.TH
-    MyLib
 
   -- other-modules:
   -- other-extensions:
@@ -70,6 +69,5 @@ test-suite hierarchical-env-test
     Control.Env.Hierarchical.InternalSpec
     Control.Env.Hierarchical.THSpec
     Control.Env.HierarchicalSpec
-    MyLibSpec
 
   build-depends:  hierarchical-env
