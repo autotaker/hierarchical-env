@@ -10,11 +10,25 @@
 module Control.Env.HierarchicalSpec where
 
 import Control.Env.Hierarchical
+  ( Has,
+    Has1,
+    Root,
+    deriveEnv,
+    getL,
+    runIF,
+  )
 import Control.Env.Hierarchical.Internal (Super)
 import Control.Method (Interface (IBase), mapBaseRIO)
-import Lens.Micro.TH
+import Lens.Micro.TH (makeLenses)
 import RIO
-import Test.Hspec
+  ( Display (textDisplay),
+    Generic,
+    RIO,
+    Text,
+    runRIO,
+    view,
+  )
+import Test.Hspec (Spec, it, shouldReturn)
 
 data Env1 = Env1
   { hoge :: HogeObj Env1,
@@ -87,8 +101,8 @@ mkEnv3 env = Env3 env (Param2 5)
 hogeImpl :: HogeObj env
 hogeImpl =
   HogeObj
-    { _hogeMethod = \n -> pure $ textDisplay n,
-      _fugaMethod = \b -> pure $ not b
+    { _hogeMethod = pure . textDisplay,
+      _fugaMethod = pure . not
     }
 
 --
@@ -97,7 +111,7 @@ fooImpl =
   FooObj
     { _fooMethod = do
         Param2 n <- view getL
-        runIF (\x -> _hogeMethod x n),
+        runIF (\x -> view hogeMethod x n),
       _barMethod = pure True
     }
 

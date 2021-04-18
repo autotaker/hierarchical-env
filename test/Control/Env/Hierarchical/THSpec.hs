@@ -4,18 +4,22 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# OPTIONS_GHC -ddump-splices -ddump-to-file #-}
+
+--{-# OPTIONS_GHC -ddump-splices -ddump-to-file #-}
 
 module Control.Env.Hierarchical.THSpec where
 
 import Control.Env.Hierarchical.Internal
-import Control.Env.Hierarchical.TH
-import Data.Kind (Type)
+  ( Environment (Fields, Fields1),
+    Field (fieldL),
+    Root,
+    Super,
+  )
+import Control.Env.Hierarchical.TH (deriveEnv)
 import Data.Maybe (isNothing)
 import Data.Typeable (Proxy (Proxy), typeRep)
-import Lens.Micro (Lens', to, (^.), (^?), _Left)
-import Lens.Micro.Mtl (view)
-import Test.Hspec
+import Lens.Micro (to, (^.), (^?), _Left)
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 type F env = (env -> Int)
 
@@ -42,7 +46,6 @@ mkEnv =
 deriveEnv ''Env
 
 type instance Super (Env f a) = Root
-
 
 spec :: Spec
 spec = describe "deriveEnv" $ do
