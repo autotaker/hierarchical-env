@@ -39,12 +39,18 @@ import Lens.Micro (Lens')
 import Lens.Micro.Mtl (view)
 import RIO (RIO, runRIO)
 
-type family Super x
+-- | @Super env@ represents the inheritance relation between environments.
+-- Every environment must be a descendant of 'Root'.
+type family Super env
 
 class Environment env where
+  -- | interfaces that are fields of the environment
   type Fields1 env :: [Type -> Type]
+
+  -- | fields of the environment
   type Fields env :: [Type]
 
+-- | Root environment that does not have any fields.
 data Root = Root
 
 type instance Super Root = TypeError ('Text "No super environment for Root")
@@ -53,6 +59,7 @@ instance Environment Root where
   type Fields1 Root = '[]
   type Fields Root = '[]
 
+-- | direct field of @env@
 class Field a env where
   fieldL :: Lens' env a
 
@@ -94,8 +101,14 @@ type HasAux a env env' = (env <: env', Field a env')
 
 type Has1Aux f env env' = (env <: env', Field (f env') env')
 
+-- | Type constraint meaning @env@ contains @a@ as a (including anscestors') field.
+--
+-- An environment @env@ contains unique value for each type @T@ that satisfies
+-- @Has T env@. If you want to depends on multiple values of the same type,
+-- please distinguish them by using newtype.
 type Has a env = HasAux a env (FindEnv a (Anscestors env))
 
+-- | Type constraint meaning @env@ contains @f env'@ for some anscestor @env'@
 type Has1 f env = Has1Aux f env (FindEnv1 f (Anscestors env))
 
 type Anscestors env = Addr env Root
@@ -103,12 +116,16 @@ type Anscestors env = Addr env Root
 inheritL :: forall env env'. env <: env' => Lens' env env'
 inheritL = transL @env' @(Addr env env')
 
+-- | Lens to extract @a@ from @env@
 getL :: forall a env. Has a env => Lens' env a
 getL = inheritL @env @(FindEnv a (Anscestors env)) . fieldL
 
 ifaceL :: forall f env. Has1 f env => SomeInterface f env
 ifaceL = SomeInterface (fieldL @(f (FindEnv1 f (Anscestors env)))) inheritL
 
+-- | Run action that depends on an interface @f@.
+-- The action must be polymorphic to @env'@,
+-- because it will run in some anscestor environment, which may be different from @env@,
 runIF :: forall f env a. Has1 f env => (forall env'. f env' -> RIO env' a) -> RIO env a
 runIF body =
   case ifaceL @f of
