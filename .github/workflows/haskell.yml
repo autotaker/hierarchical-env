@@ -6,17 +6,17 @@ on:
   pull_request:
     branches: [ main ]
 
-strategy:
-  matrix:
-    ghc: 
-      - '8.8.4'
-      - '8.10.4'
 
 
 jobs:
   build:
 
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ghc: 
+         - '8.8.4'
+         - '8.10.4'
 
     steps:
     - uses: actions/checkout@v2
