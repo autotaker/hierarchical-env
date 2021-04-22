@@ -101,31 +101,31 @@ type HasAux a env env' = (env <: env', Field a env')
 
 type Has1Aux f env env' = (env <: env', Field (f env') env')
 
--- | Type constraint meaning @env@ contains @a@ as a (including anscestors') field.
+-- | Type constraint meaning @env@ contains @a@ as a (including ancestors') field.
 --
 -- An environment @env@ contains unique value for each type @T@ that satisfies
 -- @Has T env@. If you want to depends on multiple values of the same type,
 -- please distinguish them by using newtype.
-type Has a env = HasAux a env (FindEnv a (Anscestors env))
+type Has a env = HasAux a env (FindEnv a (Ancestors env))
 
--- | Type constraint meaning @env@ contains @f env'@ for some anscestor @env'@
-type Has1 f env = Has1Aux f env (FindEnv1 f (Anscestors env))
+-- | Type constraint meaning @env@ contains @f env'@ for some ancestor @env'@
+type Has1 f env = Has1Aux f env (FindEnv1 f (Ancestors env))
 
-type Anscestors env = Addr env Root
+type Ancestors env = Addr env Root
 
 inheritL :: forall env env'. env <: env' => Lens' env env'
 inheritL = transL @env' @(Addr env env')
 
 -- | Lens to extract @a@ from @env@
 getL :: forall a env. Has a env => Lens' env a
-getL = inheritL @env @(FindEnv a (Anscestors env)) . fieldL
+getL = inheritL @env @(FindEnv a (Ancestors env)) . fieldL
 
 ifaceL :: forall f env. Has1 f env => SomeInterface f env
-ifaceL = SomeInterface (fieldL @(f (FindEnv1 f (Anscestors env)))) inheritL
+ifaceL = SomeInterface (fieldL @(f (FindEnv1 f (Ancestors env)))) inheritL
 
 -- | Run action that depends on an interface @f@.
 -- The action must be polymorphic to @env'@,
--- because it will run in some anscestor environment, which may be different from @env@,
+-- because it will run in some ancestor environment, which may be different from @env@,
 runIF :: forall f env a. Has1 f env => (forall env'. f env' -> RIO env' a) -> RIO env a
 runIF body =
   case ifaceL @f of
