@@ -1,8 +1,8 @@
 language: haskell
 ghc:
  - "8.8.4"
- - "8.10.3"
-cabal: "3.2"
+ - "8.10.4"
+cabal: "3.4"
 
 install:
  - cabal build --only-dependencies --enable-tests
