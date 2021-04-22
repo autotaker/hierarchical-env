@@ -8,17 +8,17 @@ name:               hierarchical-env
 version:            0.1.0.0
 synopsis:           hierarchical environments for dependency injection
 
--- description:
+description:        This library provides scalable dependency injection for RIO monad
 homepage:           https://github.com/autotaker/hierarchical-env
 
 -- bug-reports:
 license:            BSD-3-Clause
 license-file:       LICENSE
-author:             autotaker
+author:             Taku Terao
 maintainer:         autotaker@gmail.com
 
 -- copyright:
--- category:
+category: Control
 extra-source-files:
   CHANGELOG.md
   README.md
