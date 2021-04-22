@@ -13,6 +13,12 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- |
+-- Module : Control.Env.Hierarchical.Internal
+-- Description:
+-- License: BSD-3
+-- Maintainer: autotaker@gmail.com
+-- Stability: experimental
 module Control.Env.Hierarchical.Internal
   ( Environment (..),
     Super,
@@ -106,10 +112,12 @@ type Has1Aux f env env' = (env <: env', Field (f env') env')
 -- An environment @env@ contains unique value for each type @T@ that satisfies
 -- @Has T env@. If you want to depends on multiple values of the same type,
 -- please distinguish them by using newtype.
-type Has a env = HasAux a env (FindEnv a (Ancestors env))
+type family Has a env where
+  Has a env = HasAux a env (FindEnv a (Ancestors env))
 
 -- | Type constraint meaning @env@ contains @f env'@ for some ancestor @env'@
-type Has1 f env = Has1Aux f env (FindEnv1 f (Ancestors env))
+type family Has1 f env where
+  Has1 f env = Has1Aux f env (FindEnv1 f (Ancestors env))
 
 type Ancestors env = Addr env Root
 

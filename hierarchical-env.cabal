@@ -6,7 +6,7 @@ cabal-version:      2.4
 
 name:               hierarchical-env
 version:            0.1.0.0
-synopsis:           my favorite cabal project example
+synopsis:           hierarchical environments for dependency injection
 
 -- description:
 homepage:           https://github.com/autotaker/hierarchical-env

@@ -1,6 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+-- |
+-- Module : Control.Env.Hierarchical.TH
+-- Description:
+-- License: BSD-3
+-- Maintainer: autotaker@gmail.com
+-- Stability: experimental
 module Control.Env.Hierarchical.TH (deriveEnv) where
 
 import Control.Env.Hierarchical.Internal

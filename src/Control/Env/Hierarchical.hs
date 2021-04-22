@@ -1,5 +1,11 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 
+-- |
+-- Module : Control.Env.Hierarchical
+-- Description:
+-- License: BSD-3
+-- Maintainer: autotaker@gmail.com
+-- Stability: experimental
 module Control.Env.Hierarchical
   ( -- * Getting Fields
     -- $usage:field
