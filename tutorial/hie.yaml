@@ -1,0 +1,10 @@
+cradle:
+  cabal:
+    - path: "src"
+      component: "lib:hierarchical-env-tutorial"
+
+    - path: "app/Main.hs"
+      component: "hierarchical-env-tutorial:exe:hierarchical-env-tutorial"
+
+    - path: "test"
+      component: "hierarchical-env-tutorial:test:hierarchical-env-tutorial-test"
