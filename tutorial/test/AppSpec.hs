@@ -12,6 +12,8 @@ import Control.Env.Hierarchical
 import Control.Monad.Except
 import Data.Aeson (KeyValue ((.=)), Value, decode, eitherDecodeStrict', object)
 import Data.ByteString.Builder (toLazyByteString)
+import Data.Pool
+import Database.MySQL.Simple
 import Interface
 import Network.HTTP.Types
 import Network.Wai
@@ -29,6 +31,13 @@ deriveEnv ''MockWHEnv
 instance HasLogFunc MockWHEnv where
   logFuncL = getL
 
+data MockDBEnv = MockDBEnv LogFunc ConnectionPool
+
+deriveEnv ''MockDBEnv
+
+instance HasLogFunc MockDBEnv where
+  logFuncL = getL
+
 withStdoutLogFunc :: (LogFunc -> IO ()) -> IO ()
 withStdoutLogFunc doit = do
   logOptions <- logOptionsHandle stdout True
@@ -40,13 +49,53 @@ spec = do
     describe "postSlack" $
       aroundAllWith withMockAPI $ do
         it "send post request to SlackWebhookURL" $ \lf -> do
-          let env = MockWHEnv lf (SlackWebhookURL "http://localhost:8080/webhook")
+          let env = MockWHEnv lf (SlackWebhookURL "http://localhost:10080/webhook")
           runRIO env (postSlack "Hello World!") `shouldReturn` ()
+
+    describe "countInqueries" $
+      aroundAllWith withConnectionPool $ do
+        beforeWith setupTable $ do
+          it "count the number of inqueriew whose status is not close" $ \(lf, cp) -> do
+            let env = MockDBEnv lf cp
+            runRIO env countInqueries `shouldReturn` 5
+
+setupTable :: (LogFunc, ConnectionPool) -> IO (LogFunc, ConnectionPool)
+setupTable (lf, ConnectionPool cp) =
+  withResource cp $ \conn -> do
+    void $ execute_ conn "DELETE FROM `inquery`"
+    void $ executeMany conn "INSERT INTO `inquery`(`title`,`status`) VALUES (?,?)" dat
+    pure (lf, ConnectionPool cp)
+  where
+    dat :: [(Text, Text)]
+    dat =
+      [ ("title1", "NEW"),
+        ("title2", "NEW"),
+        ("title3", "IN PROGRESS"),
+        ("title4", "IN PROGRESS"),
+        ("title5", "IN PROGRESS"),
+        ("title6", "CLOSED"),
+        ("title7", "CLOSED"),
+        ("title8", "CLOSED"),
+        ("title9", "CLOSED")
+      ]
+
+withConnectionPool :: ActionWith (LogFunc, ConnectionPool) -> ActionWith LogFunc
+withConnectionPool doit lf =
+  bracket (createPool (connect cInfo) close 1 0.5 1) destroyAllResources $ \cp -> do
+    doit (lf, ConnectionPool cp)
+  where
+    cInfo =
+      defaultConnectInfo
+        { connectUser = "docker",
+          connectPassword = "docker",
+          connectDatabase = "test_database",
+          connectHost = "127.0.0.1"
+        }
 
 withMockAPI :: (LogFunc -> IO ()) -> LogFunc -> IO ()
 withMockAPI doit lf = bracket launch shutdown (\_ -> doit lf)
   where
-    launch = forkIO (Warp.run 8080 mockAPI)
+    launch = forkIO (Warp.run 10080 mockAPI)
     shutdown tid = killThread tid
 
 assertJSONBody :: ByteString -> Value -> Either Utf8Builder ()

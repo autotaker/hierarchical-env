@@ -1,7 +1,8 @@
 module Interface where
 
-import RIO (ByteString)
+import Data.Pool (Pool)
+import Database.MySQL.Simple (Connection)
 
-newtype ConnectionPool = ConnectionPool ()
+newtype ConnectionPool = ConnectionPool (Pool Connection)
 
 newtype SlackWebhookURL = SlackWebhookURL String
