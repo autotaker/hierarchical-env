@@ -24,6 +24,13 @@ import RIO
     (<&>),
   )
 import Tutorial2.Interface
+  ( ConnectionPool (ConnectionPool),
+    InqueryRepo (InqueryRepo),
+    SlackAPI (SlackAPI),
+    SlackWebhookURL (SlackWebhookURL),
+    countOpen,
+    postMessage,
+  )
 
 postSlack :: (Has SlackWebhookURL env, HasLogFunc env) => Text -> RIO env ()
 postSlack text = do
