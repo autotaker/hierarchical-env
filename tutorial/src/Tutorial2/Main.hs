@@ -1,4 +1,4 @@
-module Tutorial1.Main where
+module Tutorial2.Main where
 
 import Data.Pool (createPool)
 import Database.MySQL.Simple
@@ -15,9 +15,9 @@ import Database.MySQL.Simple
   )
 import RIO (logOptionsHandle, runRIO, stdout, withLogFunc)
 import System.Environment (getEnv)
-import Tutorial1.App (app)
-import Tutorial1.Env (mkEnv)
-import Tutorial1.Interface
+import Tutorial2.App (app)
+import Tutorial2.Env (mkEnv)
+import Tutorial2.Interface
   ( ConnectionPool (ConnectionPool),
     SlackWebhookURL (SlackWebhookURL),
   )

@@ -19,3 +19,6 @@ deriveEnv ''Env
 
 instance HasLogFunc Env where
   logFuncL = getL
+
+mkEnv :: LogFunc -> ConnectionPool -> SlackWebhookURL -> Env
+mkEnv = Env

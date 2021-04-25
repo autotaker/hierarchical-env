@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Tutorial1.App where
+module Tutorial2.App where
 
-import Control.Env.Hierarchical (Has, getL)
+import Control.Env.Hierarchical (Has, Has1, getL, runIF)
 import Data.Aeson (KeyValue ((.=)), object)
 import Data.Pool (withResource)
 import Database.MySQL.Simple (Only (Only), query_)
@@ -23,7 +23,7 @@ import RIO
     void,
     (<&>),
   )
-import Tutorial1.Interface (ConnectionPool (ConnectionPool), SlackWebhookURL (SlackWebhookURL))
+import Tutorial2.Interface
 
 postSlack :: (Has SlackWebhookURL env, HasLogFunc env) => Text -> RIO env ()
 postSlack text = do
@@ -33,6 +33,9 @@ postSlack text = do
     parseRequestThrow ("POST " <> url)
       <&> setRequestBodyJSON (object ["text" .= text])
   void $ httpNoBody req
+
+slackAPIImpl :: (Has SlackWebhookURL env, HasLogFunc env) => SlackAPI env
+slackAPIImpl = SlackAPI postSlack
 
 countInqueries :: (Has ConnectionPool env, HasLogFunc env) => RIO env Int
 countInqueries = do
@@ -45,9 +48,12 @@ countInqueries = do
   logInfo $ "countInqueries: " <> display n
   pure n
 
-app :: (HasLogFunc env, Has SlackWebhookURL env, Has ConnectionPool env) => RIO env ()
+inqueryRepoImpl :: (Has ConnectionPool env, HasLogFunc env) => InqueryRepo env
+inqueryRepoImpl = InqueryRepo countInqueries
+
+app :: (HasLogFunc env, Has1 SlackAPI env, Has1 InqueryRepo env) => RIO env ()
 app = do
-  n <- countInqueries
+  n <- runIF $ view countOpen
   let msg = "There are " <> display n <> " open inqueries"
   logInfo $ "msg: " <> msg
-  postSlack $ textDisplay msg
+  runIF $ \api -> view postMessage api $ textDisplay msg

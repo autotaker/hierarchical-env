@@ -57,6 +57,10 @@ library
     Tutorial1.Env
     Tutorial1.Interface
     Tutorial1.Main
+    Tutorial2.App
+    Tutorial2.Env
+    Tutorial2.Interface
+    Tutorial2.Main
 
   -- other-modules:
   -- other-extensions:
@@ -83,4 +87,6 @@ test-suite hierarchical-env-tutorial-test
   build-depends:  hierarchical-env-tutorial
 
   -- cabal-fmt: expand test -Spec
-  other-modules:  Tutorial1.AppSpec
+  other-modules:
+    Tutorial1.AppSpec
+    Tutorial2.AppSpec
