@@ -1,4 +1,4 @@
-module Interface where
+module Tutorial1.Interface where
 
 import Data.Pool (Pool)
 import Database.MySQL.Simple (Connection)

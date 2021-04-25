@@ -4,25 +4,73 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module AppSpec where
+module Tutorial1.AppSpec where
 
-import App
-import Control.Concurrent
-import Control.Env.Hierarchical
+import Control.Concurrent (forkIO, killThread)
+import Control.Env.Hierarchical (deriveEnv, getL)
 import Control.Monad.Except
-import Data.Aeson (KeyValue ((.=)), Value, decode, eitherDecodeStrict', object)
+  ( MonadError (throwError),
+    liftEither,
+    runExcept,
+    withExcept,
+  )
+import Data.Aeson (KeyValue ((.=)), Value, eitherDecodeStrict', object)
 import Data.ByteString.Builder (toLazyByteString)
-import Data.Pool
+import Data.Pool (createPool, destroyAllResources, withResource)
 import Database.MySQL.Simple
-import Interface
-import Network.HTTP.Types
+  ( ConnectInfo
+      ( connectDatabase,
+        connectHost,
+        connectPassword,
+        connectUser
+      ),
+    close,
+    connect,
+    defaultConnectInfo,
+    executeMany,
+    execute_,
+  )
+import Network.HTTP.Types (status200, status400, status404)
 import Network.Wai
+  ( Application,
+    Request (pathInfo),
+    responseLBS,
+    strictRequestBody,
+  )
 import qualified Network.Wai.Handler.Warp as Warp
 import RIO
+  ( ByteString,
+    HasLogFunc (logFuncL),
+    IsString (fromString),
+    LogFunc,
+    Text,
+    Utf8Builder (getUtf8Builder),
+    bracket,
+    displayShow,
+    logOptionsHandle,
+    runRIO,
+    stdout,
+    void,
+    when,
+    withLogFunc,
+    (&),
+  )
 import RIO.ByteString.Lazy (toStrict)
-import qualified RIO.Text as T
-import qualified RIO.Text.Lazy as LT
 import Test.Hspec
+  ( ActionWith,
+    Spec,
+    aroundAll,
+    aroundAllWith,
+    beforeWith,
+    describe,
+    it,
+    shouldReturn,
+  )
+import Tutorial1.App (countInqueries, postSlack)
+import Tutorial1.Interface
+  ( ConnectionPool (ConnectionPool),
+    SlackWebhookURL (SlackWebhookURL),
+  )
 
 data MockWHEnv = MockWHEnv LogFunc SlackWebhookURL
 

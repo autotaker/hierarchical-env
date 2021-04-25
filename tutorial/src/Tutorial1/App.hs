@@ -1,13 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module App where
+module Tutorial1.App where
 
 import Control.Env.Hierarchical (Has, getL)
-import Data.Aeson
+import Data.Aeson (KeyValue ((.=)), object)
 import Data.Pool (withResource)
 import Database.MySQL.Simple (Only (Only), query_)
-import Interface (ConnectionPool (ConnectionPool), SlackWebhookURL (SlackWebhookURL))
 import Network.HTTP.Simple
+  ( httpNoBody,
+    parseRequestThrow,
+    setRequestBodyJSON,
+  )
 import RIO
   ( Display (display, textDisplay),
     HasLogFunc,
@@ -20,6 +23,7 @@ import RIO
     void,
     (<&>),
   )
+import Tutorial1.Interface (ConnectionPool (ConnectionPool), SlackWebhookURL (SlackWebhookURL))
 
 postSlack :: (Has SlackWebhookURL env, HasLogFunc env) => Text -> RIO env ()
 postSlack text = do
