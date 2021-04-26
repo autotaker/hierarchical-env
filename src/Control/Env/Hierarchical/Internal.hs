@@ -25,7 +25,7 @@ module Control.Env.Hierarchical.Internal
     Root (..),
     Field (..),
     Trans (..),
-    type (<:),
+    --    type (<:),
     SomeInterface (SomeInterface),
     Has,
     Has1,
@@ -91,15 +91,15 @@ instance (Field t s, Trans t l) => Trans s (t : l) where
   transL = fieldL . transL @t @l
 
 -- env1 <: env2 <: env3
--- Addr env1 env3 = [env1, env2, env3]
--- Addr env2 env3 = [env2, env3]
--- Addr env3 env3 = [env3]
-type family Addr a b :: [Type] where
-  Addr a b = a ': Addr' a b
+-- Addr env1 env3 = [env2, env3]
+-- Addr env2 env3 = [env3]
+-- Addr env3 env3 = []
+type family Addr a :: [Type] where
+  Addr Root = '[]
+  Addr a = Super a ': Addr (Super a)
 
-type family Addr' a b :: [Type] where
-  Addr' a a = '[]
-  Addr' a b = Super a ': Addr' (Super a) b
+type family Ancestors env :: [Type] where
+  Ancestors env = env ': Addr env
 
 type family Member (f :: k) (l :: [k]) :: Bool where
   Member f '[] = 'False
@@ -114,7 +114,7 @@ type family FindEnv1 (f :: Type -> Type) (envs :: [Type]) :: [Type] where
   FindEnv1 f (env ': envs) = env ': If (Member f (Fields1 env)) '[] (FindEnv1 f envs)
   FindEnv1 f '[] = TypeError ('Text "No environment has " ':<>: 'ShowType f)
 
-type (<:) env env' = (Trans env (Tail (Addr env env')), Target env (Tail (Addr env env')) ~ env')
+-- type (<:) env env' = (Trans env (Tail (Addr env env')), Target env (Tail (Addr env env')) ~ env')
 
 type family Tail (l :: [Type]) where
   Tail (x : xs) = xs
@@ -137,8 +137,6 @@ type family Has a env where
 -- | Type constraint meaning @env@ contains @f env'@ for some ancestor @env'@
 type family Has1 f env where
   Has1 f env = Has1Aux f env (Tail (FindEnv1 f (Ancestors env)))
-
-type Ancestors env = Addr env Root
 
 -- | Lens to extract @a@ from @env@
 getL :: forall a env. Has a env => Lens' env a
