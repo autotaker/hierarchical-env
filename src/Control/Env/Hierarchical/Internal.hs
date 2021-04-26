@@ -72,40 +72,59 @@ class Field a env where
 instance Field env env where
   fieldL = id
 
-class Trans a (l :: [Type]) s | a l -> s where
-  transL :: Lens' s a
+-- Addr s t = '[v1, ... vn]
+-- s = v1 <: v2 <: ... <: vn = t
+-- s = env1 <: env2 <: env3 = Target s '[env2, env3]
+-- s = env1 <: env2 = Target s '[env2]
+-- s = env1 = Target s '[]
+-- Trans env1 [env1]
+class Trans s (l :: [Type]) where
+  type Target s l
+  transL :: Lens' s (Target s l)
 
-instance Trans a '[] a where
+instance Trans s '[] where
+  type Target s '[] = s
   transL = id
 
-instance (Field s' s, Trans a l s') => Trans a (s : l) s where
-  transL = fieldL . transL @a @l
+instance (Field t s, Trans t l) => Trans s (t : l) where
+  type Target s (t : l) = Target t l
+  transL = fieldL . transL @t @l
 
+-- env1 <: env2 <: env3
+-- Addr env1 env3 = [env1, env2, env3]
+-- Addr env2 env3 = [env2, env3]
+-- Addr env3 env3 = [env3]
 type family Addr a b :: [Type] where
-  Addr a a = '[]
-  Addr a b = a : Addr (Super a) b
+  Addr a b = a ': Addr' a b
+
+type family Addr' a b :: [Type] where
+  Addr' a a = '[]
+  Addr' a b = Super a ': Addr' (Super a) b
 
 type family Member (f :: k) (l :: [k]) :: Bool where
   Member f '[] = 'False
   Member f (f : l) = 'True
   Member f (g : l) = Member f l
 
-type family FindEnv (f :: Type) (envs :: [Type]) where
-  FindEnv f (env ': envs) = If (Member f (Fields env)) env (FindEnv f envs)
+type family FindEnv (f :: Type) (envs :: [Type]) :: [Type] where
+  FindEnv f (env ': envs) = env ': If (Member f (Fields env)) '[] (FindEnv f envs)
   FindEnv f '[] = TypeError ('Text "No environment has " ':<>: 'ShowType f)
 
-type family FindEnv1 (f :: Type -> Type) (envs :: [Type]) where
-  FindEnv1 f (env ': envs) = If (Member f (Fields1 env)) env (FindEnv1 f envs)
+type family FindEnv1 (f :: Type -> Type) (envs :: [Type]) :: [Type] where
+  FindEnv1 f (env ': envs) = env ': If (Member f (Fields1 env)) '[] (FindEnv1 f envs)
   FindEnv1 f '[] = TypeError ('Text "No environment has " ':<>: 'ShowType f)
 
-type (<:) env env' = Trans env' (Addr env env') env
+type (<:) env env' = (Trans env (Tail (Addr env env')), Target env (Tail (Addr env env')) ~ env')
+
+type family Tail (l :: [Type]) where
+  Tail (x : xs) = xs
 
 data SomeInterface f env where
   SomeInterface :: Lens' env' (f env') -> Lens' env env' -> SomeInterface f env
 
-type HasAux a env env' = (env <: env', Field a env')
+type HasAux a env route = (Trans env route, Field a (Target env route))
 
-type Has1Aux f env env' = (env <: env', Field (f env') env')
+type Has1Aux f env route = (Trans env route, Field (f (Target env route)) (Target env route))
 
 -- | Type constraint meaning @env@ contains @a@ as a (including ancestors') field.
 --
@@ -113,23 +132,23 @@ type Has1Aux f env env' = (env <: env', Field (f env') env')
 -- @Has T env@. If you want to depends on multiple values of the same type,
 -- please distinguish them by using newtype.
 type family Has a env where
-  Has a env = HasAux a env (FindEnv a (Ancestors env))
+  Has a env = HasAux a env (Tail (FindEnv a (Ancestors env)))
 
 -- | Type constraint meaning @env@ contains @f env'@ for some ancestor @env'@
 type family Has1 f env where
-  Has1 f env = Has1Aux f env (FindEnv1 f (Ancestors env))
+  Has1 f env = Has1Aux f env (Tail (FindEnv1 f (Ancestors env)))
 
 type Ancestors env = Addr env Root
 
-inheritL :: forall env env'. env <: env' => Lens' env env'
-inheritL = transL @env' @(Addr env env')
-
 -- | Lens to extract @a@ from @env@
 getL :: forall a env. Has a env => Lens' env a
-getL = inheritL @env @(FindEnv a (Ancestors env)) . fieldL
+getL = transL @env @(Tail (FindEnv a (Ancestors env))) . fieldL
 
 ifaceL :: forall f env. Has1 f env => SomeInterface f env
-ifaceL = SomeInterface (fieldL @(f (FindEnv1 f (Ancestors env)))) inheritL
+ifaceL =
+  SomeInterface
+    (fieldL @(f (Target env (Tail (FindEnv1 f (Ancestors env))))))
+    (transL @env @(Tail (FindEnv1 f (Ancestors env))))
 
 -- | Run action that depends on an interface @f@.
 -- The action must be polymorphic to @env'@,
@@ -141,3 +160,32 @@ runIF body =
       iface <- view $ superL . _ifaceL
       env <- view superL
       runRIO env (body iface)
+
+{-
+data Env1 = Env1 Int Char
+
+type instance Super Env1 = Root
+
+instance Environment Env1 where
+  type Fields Env1 = '[Int, Char]
+  type Fields1 Env1 = '[]
+
+instance Field Int Env1 where
+  fieldL f (Env1 x1 x2) = fmap (\y1 -> Env1 y1 x2) (f x1)
+
+ex :: Lens' Env1 Int
+ex = getL
+
+ex2 :: Int
+ex2 = t1 + t2
+  where
+    t1 :: (Ancestors Env1 ~ '[Env1, Root]) => Int
+    t1 = 0
+    t2 :: (FindEnv Int '[Env1, Root] ~ '[Env1]) => Int
+    t2 = 0
+    t3 :: Trans Env1 '[Env1] => Lens' Env1 Env1
+    t3 = transL @Env1 @'[Env1]
+    t4 :: Lens' Env1 Env1
+    t4 = t3
+
+-}

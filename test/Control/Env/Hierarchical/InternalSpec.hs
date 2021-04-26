@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -10,11 +11,14 @@ module Control.Env.Hierarchical.InternalSpec where
 import Control.Env.Hierarchical.Internal
   ( Environment (Fields, Fields1),
     Field (fieldL),
+    Has,
     Root,
     Super,
     getL,
     runIF,
   )
+import Control.Method (Interface (IBase), mapBaseRIO)
+import GHC.Generics (Generic)
 import Lens.Micro.Mtl (view)
 import Lens.Micro.TH (makeLenses)
 import RIO (RIO, runRIO)
@@ -38,6 +42,9 @@ newtype Param1 = Param1 Int
   deriving (Eq, Show)
 
 newtype Param2 = Param2 Int
+  deriving (Eq, Show)
+
+newtype Param3 = Param3 Int
   deriving (Eq, Show)
 
 data Env1 = Env1
@@ -113,6 +120,33 @@ env2Impl =
       _param2 = Param2 2,
       _env1 = env1Impl
     }
+
+data Env3 env = Env3 Param3 env
+
+instance Environment (Env3 env) where
+  type Fields (Env3 env) = '[Param3]
+  type Fields1 (Env3 env) = '[]
+
+type instance Super (Env3 env) = env
+
+instance {-# INCOHERENT #-} Field env (Env3 env) where
+  fieldL f (Env3 x1 x2) = fmap (\y2 -> Env3 x1 y2) (f x2)
+
+instance Field Param3 (Env3 env) where
+  fieldL f (Env3 x1 x2) = fmap (\y1 -> Env3 y1 x2) (f x1)
+
+newtype Obj3 env = Obj3 (RIO env Int)
+  deriving (Generic)
+
+instance Interface Obj3 where
+  type IBase Obj3 = RIO
+
+example3 :: Has Param1 env => Obj3 env
+example3 = mapBaseRIO (Env3 (Param3 0)) $
+  Obj3 $ do
+    Param3 n <- view getL
+    Param1 m <- view getL
+    pure $ n + m
 
 spec :: Spec
 spec = do
