@@ -13,7 +13,7 @@ import Database.MySQL.Simple
     connect,
     defaultConnectInfo,
   )
-import RIO (logOptionsHandle, runRIO, stdout, withLogFunc)
+import RIO (runRIO)
 import System.Environment (getEnv)
 import Tutorial1.App (app)
 import Tutorial1.Env (mkEnv)
@@ -24,13 +24,11 @@ import Tutorial1.Interface
 
 main :: IO ()
 main = do
-  logOptions <- logOptionsHandle stdout False
-  withLogFunc logOptions $ \lf -> do
-    cInfo <- getConnectionInfo
-    hook <- getSlackWebhookURL
-    pool <- createPool (connect cInfo) close 1 0.5 10
-    let env = mkEnv lf (ConnectionPool pool) hook
-    runRIO env app
+  cInfo <- getConnectionInfo
+  hook <- getSlackWebhookURL
+  pool <- createPool (connect cInfo) close 1 0.5 10
+  let env = mkEnv (ConnectionPool pool) hook
+  runRIO env app
 
 getSlackWebhookURL :: IO SlackWebhookURL
 getSlackWebhookURL =
