@@ -9,11 +9,7 @@ import Control.Env.Hierarchical (deriveEnv, getL)
 import RIO (HasLogFunc (logFuncL), LogFunc)
 import Tutorial1.Interface (ConnectionPool, SlackWebhookURL)
 
-data Env = Env
-  { logFunc :: LogFunc,
-    connectionPool :: ConnectionPool,
-    slackWebhookURL :: SlackWebhookURL
-  }
+data Env = Env LogFunc ConnectionPool SlackWebhookURL
 
 deriveEnv ''Env
 
