@@ -40,7 +40,6 @@ import Control.Env.Hierarchical.Internal
     Extends (Extends),
     Has,
     Has1,
-    Root,
     getL,
     runIF,
   )
