@@ -11,6 +11,7 @@ module Control.Env.Hierarchical.THSpec where
 
 import Control.Env.Hierarchical.Internal
   ( Environment (Fields, Fields1),
+    Extends,
     Field (fieldL),
     Root,
     Super,
@@ -45,12 +46,18 @@ mkEnv =
 
 deriveEnv ''Env
 
-type instance Super (Env f a) = Root
+newtype Param1 = Param1 Int
+
+data Env2 = Env2 (Extends E) Param1
+
+deriveEnv ''Env2
 
 spec :: Spec
 spec = describe "deriveEnv" $ do
   it "`Super E` is Root" $ do
     typeRep (Proxy @(Super E)) `shouldBe` typeRep (Proxy @Root)
+  it "`Super Env2` is E" $ do
+    typeRep (Proxy @(Super Env2)) `shouldBe` typeRep (Proxy @E)
   it "`Fields E` is '[E, Int, Bool, Maybe E, Either Int E, F E]" $ do
     typeRep (Proxy @(Fields E))
       `shouldBe` typeRep (Proxy @'[E, Int, Bool, Maybe E, Either Int E, F E])

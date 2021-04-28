@@ -24,8 +24,8 @@ module Control.Env.Hierarchical
 
     -- ** With hierarchical environments
     -- $usage:hierarchical
-    Root,
-    Super,
+    Environment (Super, superL),
+    Extends (Extends),
     deriveEnv,
 
     -- * Hiding dependencies
@@ -36,10 +36,10 @@ module Control.Env.Hierarchical
 where
 
 import Control.Env.Hierarchical.Internal
-  ( Has,
+  ( Environment (Super, superL),
+    Extends (Extends),
+    Has,
     Has1,
-    Root,
-    Super,
     getL,
     runIF,
   )
@@ -103,7 +103,6 @@ import Control.Method (Interface (IBase, mapBase), mapBaseRIO)
 --
 -- @
 -- 'deriveEnv' ''Env
--- type instance 'Super' Env = 'Root'
 -- @
 --
 -- Now, you can inject dependency by specifying the actual value of @Env@
@@ -125,7 +124,7 @@ import Control.Method (Interface (IBase, mapBase), mapBaseRIO)
 
 -- $usage:hierarchical
 -- Instead of resolving the dependency universally,
--- you can extend environments by specifying the super environment.
+-- you can extend environments by adding @Extend T@ as a field.
 --
 -- In the following example @ExtEnv@ inherits @BaseEnv@.
 -- The extended environment is a nominal sub-type of its super environment,
@@ -138,12 +137,10 @@ import Control.Method (Interface (IBase, mapBase), mapBaseRIO)
 -- data BaseEnv = BaseEnv !ServerName !ConnectionPool
 --
 -- 'deriveEnv' ''BaseEnv
--- type instance 'Super' BaseEnv = 'Root'
 --
--- data ExtEnv = ExtEnv !BaseEnv !(UserRepo ExtEnv)
+-- data ExtEnv = ExtEnv !(Extends BaseEnv) !(UserRepo ExtEnv)
 --
 -- 'deriveEnv' ''ExtEnv
--- type instance 'Super' ExtEnv = BaseEnv
 -- @
 --
 -- Then, @ExtEnv@ resolves the dependencies.
@@ -158,7 +155,7 @@ import Control.Method (Interface (IBase, mapBase), mapBaseRIO)
 -- runApp :: ServerName -> ConnectionPool -> [UserName] -> IO ()
 -- runApp serverName pool users = do
 --   let baseEnv = BaseEnv serverName pool
---       extEnv = ExtEnv baseEnv userRepoImpl
+--       extEnv = ExtEnv (Extends baseEnv) userRepoImpl
 --   runRIO extEnv $ do
 --     printServerName
 --     forM_ users $ \usernm -> do
@@ -214,12 +211,11 @@ import Control.Method (Interface (IBase, mapBase), mapBaseRIO)
 -- instance 'Interface' AuthHandler where
 --   type 'IBase' AuthHandler = RIO
 --
--- data AuthEnv env = AuthEnv !(UserRepo (AutheEnv env)) !env
+-- data AuthEnv env = AuthEnv !(UserRepo (AutheEnv env)) !(Extends env)
 -- 'deriveEnv' ''AuthEnv
--- type instance 'Super' (AuthEnv env) = env
 --
 -- authHandlerImpl :: ('Has' ConnectionPool env) => AuthHandler env
--- authHandlerImpl = 'mapBaseRIO' (AuthEnv userRepoImpl) handler
+-- authHandlerImpl = 'mapBaseRIO' (AuthEnv userRepoImpl . Extends) handler
 --   where
 --     handler = AuthHandler signinImpl signupImpl
 -- @

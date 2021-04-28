@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -8,13 +10,17 @@
 module Control.Env.Hierarchical.InternalSpec where
 
 import Control.Env.Hierarchical.Internal
-  ( Environment (Fields, Fields1),
+  ( Environment (Fields, Fields1, superL),
+    Extends (Extends),
     Field (fieldL),
-    Root,
+    Has,
+    Root (Root),
     Super,
     getL,
     runIF,
   )
+import Control.Method (Interface (IBase), mapBaseRIO)
+import GHC.Generics (Generic)
 import Lens.Micro.Mtl (view)
 import Lens.Micro.TH (makeLenses)
 import RIO (RIO, runRIO)
@@ -40,6 +46,9 @@ newtype Param1 = Param1 Int
 newtype Param2 = Param2 Int
   deriving (Eq, Show)
 
+newtype Param3 = Param3 Int
+  deriving (Eq, Show)
+
 data Env1 = Env1
   { _obj1 :: Obj1 Env1,
     _param1 :: Param1
@@ -48,7 +57,7 @@ data Env1 = Env1
 makeLenses ''Env1
 
 data Env2 = Env2
-  { _env1 :: Env1,
+  { _env1 :: Extends Env1,
     _obj2 :: Obj2 Env2,
     _param2 :: Param2
   }
@@ -58,17 +67,13 @@ makeLenses ''Env2
 instance Environment Env1 where
   type Fields1 Env1 = '[Obj1]
   type Fields Env1 = '[Env1, Obj1 Env1, Param1]
-
-type instance Super Env1 = Root
+  type Super Env1 = Root
+  superL f x = x <$ f Root
 
 instance Environment Env2 where
   type Fields1 Env2 = '[Obj2]
-  type Fields Env2 = '[Env2, Env1, Obj2 Env2, Param2]
-
-type instance Super Env2 = Env1
-
-instance Field Env1 Env1 where
-  fieldL = id
+  type Fields Env2 = '[Extends Env1, Obj2 Env2, Param2]
+  type Super Env2 = Env1
 
 instance Field (Obj1 Env1) Env1 where
   fieldL = obj1
@@ -76,10 +81,7 @@ instance Field (Obj1 Env1) Env1 where
 instance Field Param1 Env1 where
   fieldL = param1
 
-instance Field Env2 Env2 where
-  fieldL = id
-
-instance Field Env1 Env2 where
+instance Field (Extends Env1) Env2 where
   fieldL = env1
 
 instance Field (Obj2 Env2) Env2 where
@@ -111,8 +113,34 @@ env2Impl =
             _method4 = pure 4
           },
       _param2 = Param2 2,
-      _env1 = env1Impl
+      _env1 = Extends env1Impl
     }
+
+data Env3 env = Env3 Param3 (Extends env)
+
+instance Environment (Env3 env) where
+  type Fields (Env3 env) = '[Param3]
+  type Fields1 (Env3 env) = '[]
+  type Super (Env3 env) = env
+
+instance Field (Extends env) (Env3 env) where
+  fieldL f (Env3 x1 x2) = fmap (\y2 -> Env3 x1 y2) (f x2)
+
+instance Field Param3 (Env3 env) where
+  fieldL f (Env3 x1 x2) = fmap (\y1 -> Env3 y1 x2) (f x1)
+
+newtype Obj3 env = Obj3 {_runObj3 :: RIO env Int}
+  deriving (Generic)
+
+instance Interface Obj3 where
+  type IBase Obj3 = RIO
+
+obj3Impl :: Has Param1 env => Obj3 env
+obj3Impl = mapBaseRIO (Env3 (Param3 3) . Extends) $
+  Obj3 $ do
+    Param3 n <- view getL
+    Param1 m <- view getL
+    pure $ n + m
 
 spec :: Spec
 spec = do
@@ -158,3 +186,7 @@ spec = do
       n <- runRIO env2Impl $ do
         runIF @Obj2 _method3
       n `shouldBe` 3
+    it "runIF @Obj3 from Env1" $ do
+      n <- runRIO env1Impl $ do
+        _runObj3 obj3Impl
+      n `shouldBe` 4

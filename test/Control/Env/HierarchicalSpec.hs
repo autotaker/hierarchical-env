@@ -10,14 +10,13 @@
 module Control.Env.HierarchicalSpec where
 
 import Control.Env.Hierarchical
-  ( Has,
+  ( Extends (Extends),
+    Has,
     Has1,
-    Root,
     deriveEnv,
     getL,
     runIF,
   )
-import Control.Env.Hierarchical.Internal (Super)
 import Control.Method (Interface (IBase), mapBaseRIO)
 import Lens.Micro.TH (makeLenses)
 import RIO
@@ -36,11 +35,11 @@ data Env1 = Env1
   }
 
 data Env2 = Env2
-  { env1 :: Env1,
+  { env1 :: Extends Env1,
     foo :: FooObj Env2
   }
 
-data Env3 env = Env3 env Param2
+data Env3 env = Env3 (Extends env) Param2
 
 data HogeObj env = HogeObj
   { _hogeMethod :: Int -> RIO env Text,
@@ -67,12 +66,6 @@ deriveEnv ''Env1
 deriveEnv ''Env2
 deriveEnv ''Env3
 
-type instance Super Env1 = Root
-
-type instance Super Env2 = Env1
-
-type instance Super (Env3 env) = env
-
 example1 :: (Has1 HogeObj env, Has Param1 env) => RIO env Text
 example1 = do
   Param1 n <- view getL
@@ -92,11 +85,11 @@ mkEnv2 :: Env2
 mkEnv2 =
   Env2
     { foo = mapBaseRIO mkEnv3 fooImpl,
-      env1 = mkEnv1
+      env1 = Extends mkEnv1
     }
 
 mkEnv3 :: env -> Env3 env
-mkEnv3 env = Env3 env (Param2 5)
+mkEnv3 env = Env3 (Extends env) (Param2 5)
 
 hogeImpl :: HogeObj env
 hogeImpl =
