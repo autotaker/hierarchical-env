@@ -1,0 +1,1 @@
+{-# OPTIONS_GHC -Wno-missing-import-lists -F -pgmF hspec-discover #-}

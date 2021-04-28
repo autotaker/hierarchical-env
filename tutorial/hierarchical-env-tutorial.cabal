@@ -1,0 +1,97 @@
+cabal-version:      2.4
+
+-- Initial package description 'hierarchical-env-tutorial.cabal' generated
+-- by 'cabal init'.  For further documentation, see
+-- http://haskell.org/cabal/users-guide/
+
+name:               hierarchical-env-tutorial
+version:            0.1.0.0
+
+-- synopsis:
+-- description:
+-- bug-reports:
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Taku Terao
+maintainer:         autotaker@gmail.com
+
+-- copyright:
+-- category:
+extra-source-files: CHANGELOG.md
+
+common shared-properties
+  build-depends:
+    , aeson               ^>=1.5.6.0
+    , base                ^>=4.13.0.0
+    , hierarchical-env
+    , http-conduit        ^>=2.3.8
+    , method              ^>=0.3.1.0
+    , microlens-platform  ^>=0.4.2
+    , mysql-simple        ^>=0.4.5
+    , resource-pool       ^>=0.2.3.2
+    , rio                 ^>=0.1.16.0
+
+  default-language: Haskell2010
+  ghc-options:
+    -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
+    -Wmissing-import-lists -Wcompat
+
+common test-depends
+  build-depends:
+    , bytestring
+    , hspec       ^>=2.7.4
+    , http-types
+    , mtl
+    , wai         ^>=3.2.3
+    , warp        ^>=3.3.15
+
+  build-tool-depends: hspec-discover:hspec-discover -any
+
+library
+  import:          shared-properties
+
+  -- cabal-fmt: expand src
+  exposed-modules:
+    MyLib
+    Tutorial1.App
+    Tutorial1.Env
+    Tutorial1.Interface
+    Tutorial1.Main
+    Tutorial2.App
+    Tutorial2.Env
+    Tutorial2.Interface
+    Tutorial2.Main
+    Tutorial3.App
+    Tutorial3.Env
+    Tutorial3.Interface
+    Tutorial3.Main
+
+  -- other-modules:
+  -- other-extensions:
+
+  hs-source-dirs:  src
+
+executable hierarchical-env-tutorial
+  main-is:          Main.hs
+
+  -- other-modules:
+  -- other-extensions:
+  build-depends:
+    , base                       ^>=4.13.0.0
+    , hierarchical-env-tutorial
+
+  hs-source-dirs:   app
+  default-language: Haskell2010
+
+test-suite hierarchical-env-tutorial-test
+  import:         shared-properties, test-depends
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is:        Spec.hs
+  build-depends:  hierarchical-env-tutorial
+
+  -- cabal-fmt: expand test -Spec
+  other-modules:
+    Tutorial1.AppSpec
+    Tutorial2.AppSpec
+    Tutorial3.AppSpec

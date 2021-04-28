@@ -1,0 +1,1 @@
+INSERT INTO `status`(`status_id`) VALUES ('CLOSED'),('NEW'),('IN PROGRESS');
