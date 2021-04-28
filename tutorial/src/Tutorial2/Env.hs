@@ -16,13 +16,13 @@ import Tutorial2.Interface
     SlackWebhookURL,
   )
 
-data Env = Env
-  { logFunc :: LogFunc,
-    connectionPool :: ConnectionPool,
-    slackWebhookURL :: SlackWebhookURL,
-    inqueryRepo :: InqueryRepo Env,
-    slackAPI :: SlackAPI Env
-  }
+data Env
+  = Env
+      LogFunc
+      ConnectionPool
+      SlackWebhookURL
+      (InqueryRepo Env)
+      (SlackAPI Env)
 
 deriveEnv ''Env
 
