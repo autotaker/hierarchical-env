@@ -1,5 +1,6 @@
 module Tutorial3.Main where
 
+import Control.Env.Hierarchical ( runIF )
 import Data.Pool (createPool)
 import Database.MySQL.Simple
   ( ConnectInfo
@@ -13,13 +14,13 @@ import Database.MySQL.Simple
     connect,
     defaultConnectInfo,
   )
-import RIO (logOptionsHandle, runRIO, stdout, withLogFunc)
+import RIO (view, logOptionsHandle, runRIO, stdout, withLogFunc)
 import System.Environment (getEnv)
-import Tutorial3.App (app)
 import Tutorial3.Env (mkEnv)
 import Tutorial3.Interface
   ( ConnectionPool (ConnectionPool),
     SlackWebhookURL (SlackWebhookURL),
+    app,
   )
 
 main :: IO ()
@@ -30,7 +31,7 @@ main = do
     hook <- getSlackWebhookURL
     pool <- createPool (connect cInfo) close 1 0.5 10
     let env = mkEnv lf (ConnectionPool pool) hook
-    runRIO env app
+    runRIO env (runIF (view app))
 
 getSlackWebhookURL :: IO SlackWebhookURL
 getSlackWebhookURL =

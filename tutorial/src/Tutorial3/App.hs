@@ -10,8 +10,15 @@
 
 module Tutorial3.App where
 
-import Control.Env.Hierarchical (Has, Has1, Super, deriveEnv, getL, mapBaseRIO, runIF)
+import Control.Env.Hierarchical (deriveEnv, mapBaseRIO)
 import Control.Env.Hierarchical.Internal
+  ( Environment (superL),
+    Extends (Extends),
+    Has,
+    Has1,
+    getL,
+    runIF,
+  )
 import Data.Aeson (KeyValue ((.=)), object)
 import Data.Pool (withResource)
 import Database.MySQL.Simple (Only (Only), query_)
@@ -23,7 +30,6 @@ import Network.HTTP.Simple
 import RIO
   ( Display (display, textDisplay),
     HasLogFunc (logFuncL),
-    LogFunc,
     MonadIO (liftIO),
     RIO,
     Text,
@@ -76,28 +82,15 @@ app = do
   logInfo $ "msg: " <> msg
   runIF $ \api -> view postMessage api $ textDisplay msg
 
-data AppEnv env = AppEnv (InqueryRepo (AppEnv env)) (SlackAPI (AppEnv env)) env
+data AppEnv env = AppEnv (InqueryRepo (AppEnv env)) (SlackAPI (AppEnv env)) (Extends env)
 
-type instance Super (AppEnv env) = env
-
-instance Environment (AppEnv env) where
-  type Fields (AppEnv env) = '[InqueryRepo (AppEnv env), SlackAPI (AppEnv env)]
-  type Fields1 (AppEnv env) = '[InqueryRepo, SlackAPI]
-
-instance Field env (AppEnv env) where
-  fieldL f (AppEnv x1 x2 x3) = fmap (\y3 -> AppEnv x1 x2 y3) (f x3)
-
-instance Field (SlackAPI (AppEnv env)) (AppEnv env) where
-  fieldL f (AppEnv x1 x2 x3) = fmap (\y2 -> AppEnv x1 y2 x3) (f x2)
-
-instance Field (InqueryRepo (AppEnv env)) (AppEnv env) where
-  fieldL f (AppEnv x1 x2 x3) = fmap (\y1 -> AppEnv y1 x2 x3) (f x1)
+deriveEnv ''AppEnv
 
 instance HasLogFunc env => HasLogFunc (AppEnv env) where
-  logFuncL = fieldL @env . logFuncL
+  logFuncL = superL . logFuncL
 
 appImpl :: (HasLogFunc env, Has ConnectionPool env, Has SlackWebhookURL (AppEnv env)) => App env
-appImpl = mapBaseRIO (AppEnv inqueryRepoImpl slackAPIImpl) $ App app
+appImpl = mapBaseRIO (AppEnv inqueryRepoImpl slackAPIImpl . Extends) $ App app
 
 {- (Trans (FindEnv ConnectionPool (Addr env Root))
           (Addr (AppEnv env) (FindEnv ConnectionPool (Addr env Root)))

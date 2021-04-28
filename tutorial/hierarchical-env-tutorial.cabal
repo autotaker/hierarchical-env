@@ -61,6 +61,10 @@ library
     Tutorial2.Env
     Tutorial2.Interface
     Tutorial2.Main
+    Tutorial3.App
+    Tutorial3.Env
+    Tutorial3.Interface
+    Tutorial3.Main
 
   -- other-modules:
   -- other-extensions:
@@ -90,3 +94,4 @@ test-suite hierarchical-env-tutorial-test
   other-modules:
     Tutorial1.AppSpec
     Tutorial2.AppSpec
+    Tutorial3.AppSpec

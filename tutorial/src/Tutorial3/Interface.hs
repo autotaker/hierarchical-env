@@ -17,14 +17,12 @@ newtype SlackWebhookURL = SlackWebhookURL String
 newtype SlackAPI env = SlackAPI
   { _postMessage :: Text -> RIO env ()
   }
-  deriving (Generic)
 
 makeLenses ''SlackAPI
 
 newtype InqueryRepo env = InqueryRepo
   { _countOpen :: RIO env Int
   }
-  deriving (Generic)
 
 makeLenses ''InqueryRepo
 
