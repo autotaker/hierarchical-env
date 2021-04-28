@@ -50,8 +50,8 @@ import RIO (RIO, runRIO)
 class Environment env where
   -- | @Super env@ represents the inheritance relation between environments.
   --
-  -- * If @env@ owns a field of the form @Extends T@, then @T@ is the super environment.
-  -- * If @env@ owns no field of the form @Extends T@, then 'Root' is the super environment.
+  -- * If @env@ owns a field of the form @'Extends' T@, then @T@ is the super environment.
+  -- * If @env@ owns no field of the form @'Extends' T@, then 'Root' is the super environment.
   -- * Every @env@ must have at most one field of the form @Extends T@ because multiple inheritance is not supported.
   type Super env
 
