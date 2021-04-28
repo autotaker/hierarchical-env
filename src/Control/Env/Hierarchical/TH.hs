@@ -10,10 +10,13 @@
 module Control.Env.Hierarchical.TH (deriveEnv) where
 
 import Control.Env.Hierarchical.Internal
-  ( Environment (Fields, Fields1),
+  ( Environment (Fields, Fields1, Super, superL),
+    Extends,
     Field (fieldL),
+    Root,
+    rootL,
   )
-import Control.Monad (filterM, zipWithM)
+import Control.Monad (filterM, guard, zipWithM)
 import Data.Function ((&))
 import Language.Haskell.TH
   ( Dec (TySynD),
@@ -44,44 +47,16 @@ import Language.Haskell.TH
     promotedConsT,
     promotedNilT,
     reify,
+    reportError,
     reportWarning,
     tySynEqn,
     tySynInstD,
+    valD,
     varE,
     varP,
   )
 import qualified Language.Haskell.TH.Datatype as D
-
-{-
-data Env f a b = Env {
-    _x :: Int,
-    _y :: a,
-    _z :: Obj Env,
-    _w :: Obj2 b Env
-    _v :: f Env
-
-}
-deriveEnvironment ''Env
-==>
-instance Environment (Env f a b) where
-    type Fields (Env f a b) = '[Env f a b, Int, a,Obj Env, Obj2 b Env, f Env]
-    type Fields1 (Env f a b) = '[Obj, Obj2 b, f]
-
-instance Field Int (Env f a b) where
-  fieldL = x
-
-instance Field a (Env f a b) where
-  fieldL = y
-
-instance Field (Obj Env) (Env f a b) where
-  fieldL = z
-
-instance Field (Obj2 b Env) (Env f a b) where
-  fieldL = w
-
-instance Field (f Env) (Env f a b) where
-  fieldL = v
--}
+import Language.Haskell.TH.Ppr (commaSep)
 
 deriveEnv :: Name -> Q [Dec]
 deriveEnv envName = do
@@ -139,7 +114,7 @@ envInstance (envType, consInfo, tyVars) =
     envTypeQ = pure envType
     -- envType = D.datatypeType info
     decs :: [DecQ]
-    decs = [fieldsDec, fields1Dec]
+    decs = [fieldsDec, fields1Dec, superDec] ++ [superLDec | null extendsT]
     -- tyVars = D.datatypeVars info
     -- type Fields ($envName $typeVars) = '[$field1 ... $field2]
     fieldsDec = tySynInstD (tySynEqn (Just tyVars) lhs rhs)
@@ -151,6 +126,26 @@ envInstance (envType, consInfo, tyVars) =
       where
         lhs = conT ''Fields1 `appT` envTypeQ
         rhs = promotedListT =<< fields1 envType consInfo
+
+    -- Super ($envName $typeVars) = $t
+    -- where @$Extends $t@ is a field of the environment
+    superDec = tySynInstD (tySynEqn (Just tyVars) lhs rhs)
+      where
+        lhs = conT ''Super `appT` envTypeQ
+        rhs = case extendsT of
+          [t] -> pure t
+          [] -> conT ''Root
+          ts@(t : _) -> do
+            reportError $ "Multiple inheritance is not allowed: " <> show (commaSep ts)
+            pure t
+    extendsT :: [Type]
+    extendsT = do
+      AppT (ConT conName) t <- D.constructorFields consInfo
+      guard $ conName == ''Extends
+      pure t
+
+    -- superL = rootL (only if @Super ($envName $typeVars) = Root@)
+    superLDec = valD (varP 'superL) (normalB (varE 'rootL)) []
 
 fields1 :: Type -> D.ConstructorInfo -> Q [Type]
 fields1 ty consInfo =
