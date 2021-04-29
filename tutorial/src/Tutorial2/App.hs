@@ -13,12 +13,9 @@ import Network.HTTP.Simple
   )
 import RIO
   ( Display (display, textDisplay),
-    HasLogFunc,
     MonadIO (liftIO),
     RIO,
     Text,
-    displayShow,
-    logInfo,
     view,
     void,
     (<&>),
@@ -32,35 +29,31 @@ import Tutorial2.Interface
     postMessage,
   )
 
-postSlack :: (Has SlackWebhookURL env, HasLogFunc env) => Text -> RIO env ()
+postSlack :: (Has SlackWebhookURL env) => Text -> RIO env ()
 postSlack text = do
   SlackWebhookURL url <- view getL
-  logInfo $ "postSlack: url=" <> displayShow url <> ", message=" <> display text
   req <-
     parseRequestThrow ("POST " <> url)
       <&> setRequestBodyJSON (object ["text" .= text])
   void $ httpNoBody req
 
-slackAPIImpl :: (Has SlackWebhookURL env, HasLogFunc env) => SlackAPI env
+slackAPIImpl :: (Has SlackWebhookURL env) => SlackAPI env
 slackAPIImpl = SlackAPI postSlack
 
-countInqueries :: (Has ConnectionPool env, HasLogFunc env) => RIO env Int
+countInqueries :: (Has ConnectionPool env) => RIO env Int
 countInqueries = do
   ConnectionPool _pool <- view getL
-  n <- liftIO $
+  liftIO $
     withResource _pool $ \conn -> do
       let sql = "SELECT COUNT(*) FROM inquery WHERE status <> 'CLOSED' "
       [Only c] <- query_ conn sql
       pure c
-  logInfo $ "countInqueries: " <> display n
-  pure n
 
-inqueryRepoImpl :: (Has ConnectionPool env, HasLogFunc env) => InqueryRepo env
+inqueryRepoImpl :: (Has ConnectionPool env) => InqueryRepo env
 inqueryRepoImpl = InqueryRepo countInqueries
 
-app :: (HasLogFunc env, Has1 SlackAPI env, Has1 InqueryRepo env) => RIO env ()
+app :: (Has1 SlackAPI env, Has1 InqueryRepo env) => RIO env ()
 app = do
   n <- runIF $ view countOpen
   let msg = "There are " <> display n <> " open inqueries"
-  logInfo $ "msg: " <> msg
   runIF $ \api -> view postMessage api $ textDisplay msg

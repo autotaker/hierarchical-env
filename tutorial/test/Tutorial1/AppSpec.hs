@@ -7,7 +7,7 @@
 module Tutorial1.AppSpec where
 
 import Control.Concurrent (forkIO, killThread)
-import Control.Env.Hierarchical (deriveEnv, getL)
+import Control.Env.Hierarchical (deriveEnv)
 import Control.Monad.Except
   ( MonadError (throwError),
     liftEither,
@@ -40,19 +40,14 @@ import Network.Wai
 import qualified Network.Wai.Handler.Warp as Warp
 import RIO
   ( ByteString,
-    HasLogFunc (logFuncL),
     IsString (fromString),
-    LogFunc,
     Text,
     Utf8Builder (getUtf8Builder),
     bracket,
     displayShow,
-    logOptionsHandle,
     runRIO,
-    stdout,
     void,
     when,
-    withLogFunc,
     (&),
   )
 import RIO.ByteString.Lazy (toStrict)
@@ -60,7 +55,6 @@ import Test.Hspec
   ( ActionWith,
     Spec,
     aroundAll,
-    aroundAllWith,
     beforeWith,
     describe,
     it,
@@ -72,47 +66,35 @@ import Tutorial1.Interface
     SlackWebhookURL (SlackWebhookURL),
   )
 
-data MockWHEnv = MockWHEnv LogFunc SlackWebhookURL
+newtype MockWHEnv = MockWHEnv SlackWebhookURL
 
 deriveEnv ''MockWHEnv
 
-instance HasLogFunc MockWHEnv where
-  logFuncL = getL
-
-data MockDBEnv = MockDBEnv LogFunc ConnectionPool
+newtype MockDBEnv = MockDBEnv ConnectionPool
 
 deriveEnv ''MockDBEnv
 
-instance HasLogFunc MockDBEnv where
-  logFuncL = getL
-
-withStdoutLogFunc :: (LogFunc -> IO ()) -> IO ()
-withStdoutLogFunc doit = do
-  logOptions <- logOptionsHandle stdout True
-  withLogFunc logOptions doit
-
 spec :: Spec
 spec = do
-  aroundAll withStdoutLogFunc $ do
-    describe "postSlack" $
-      aroundAllWith withMockAPI $ do
-        it "send post request to SlackWebhookURL" $ \lf -> do
-          let env = MockWHEnv lf (SlackWebhookURL "http://localhost:10080/webhook")
-          runRIO env (postSlack "Hello World!") `shouldReturn` ()
+  describe "postSlack" $
+    aroundAll withMockAPI $ do
+      it "send post request to SlackWebhookURL" $ \() -> do
+        let env = MockWHEnv (SlackWebhookURL "http://localhost:10080/webhook")
+        runRIO env (postSlack "Hello World!") `shouldReturn` ()
 
-    describe "countInqueries" $
-      aroundAllWith withConnectionPool $ do
-        beforeWith setupTable $ do
-          it "count the number of inqueriew whose status is not close" $ \(lf, cp) -> do
-            let env = MockDBEnv lf cp
-            runRIO env countInqueries `shouldReturn` 5
+  describe "countInqueries" $
+    aroundAll withConnectionPool $ do
+      beforeWith setupTable $ do
+        it "count the number of inqueriew whose status is not close" $ \cp -> do
+          let env = MockDBEnv cp
+          runRIO env countInqueries `shouldReturn` 5
 
-setupTable :: (LogFunc, ConnectionPool) -> IO (LogFunc, ConnectionPool)
-setupTable (lf, ConnectionPool cp) =
+setupTable :: ConnectionPool -> IO ConnectionPool
+setupTable (ConnectionPool cp) =
   withResource cp $ \conn -> do
     void $ execute_ conn "DELETE FROM `inquery`"
     void $ executeMany conn "INSERT INTO `inquery`(`title`,`status`) VALUES (?,?)" dat
-    pure (lf, ConnectionPool cp)
+    pure (ConnectionPool cp)
   where
     dat :: [(Text, Text)]
     dat =
@@ -127,10 +109,10 @@ setupTable (lf, ConnectionPool cp) =
         ("title9", "CLOSED")
       ]
 
-withConnectionPool :: ActionWith (LogFunc, ConnectionPool) -> ActionWith LogFunc
-withConnectionPool doit lf =
+withConnectionPool :: ActionWith ConnectionPool -> IO ()
+withConnectionPool doit =
   bracket (createPool (connect cInfo) close 1 0.5 1) destroyAllResources $ \cp -> do
-    doit (lf, ConnectionPool cp)
+    doit (ConnectionPool cp)
   where
     cInfo =
       defaultConnectInfo
@@ -140,8 +122,8 @@ withConnectionPool doit lf =
           connectHost = "127.0.0.1"
         }
 
-withMockAPI :: (LogFunc -> IO ()) -> LogFunc -> IO ()
-withMockAPI doit lf = bracket launch shutdown (\_ -> doit lf)
+withMockAPI :: (() -> IO ()) -> IO ()
+withMockAPI doit = bracket launch shutdown (\_ -> doit ())
   where
     launch = forkIO (Warp.run 10080 mockAPI)
     shutdown tid = killThread tid

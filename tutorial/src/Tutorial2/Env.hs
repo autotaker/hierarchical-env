@@ -6,8 +6,7 @@
 
 module Tutorial2.Env where
 
-import Control.Env.Hierarchical (deriveEnv, getL)
-import RIO (HasLogFunc (logFuncL), LogFunc)
+import Control.Env.Hierarchical (deriveEnv)
 import Tutorial2.App (inqueryRepoImpl, slackAPIImpl)
 import Tutorial2.Interface
   ( ConnectionPool,
@@ -18,7 +17,6 @@ import Tutorial2.Interface
 
 data Env
   = Env
-      LogFunc
       ConnectionPool
       SlackWebhookURL
       (InqueryRepo Env)
@@ -26,8 +24,5 @@ data Env
 
 deriveEnv ''Env
 
-mkEnv :: LogFunc -> ConnectionPool -> SlackWebhookURL -> Env
-mkEnv lf pool hook = Env lf pool hook inqueryRepoImpl slackAPIImpl
-
-instance HasLogFunc Env where
-  logFuncL = getL
+mkEnv :: ConnectionPool -> SlackWebhookURL -> Env
+mkEnv pool hook = Env pool hook inqueryRepoImpl slackAPIImpl
