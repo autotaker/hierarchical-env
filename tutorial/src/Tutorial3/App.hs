@@ -78,5 +78,5 @@ data AppEnv env = AppEnv (InqueryRepo (AppEnv env)) (SlackAPI (AppEnv env)) (Ext
 
 deriveEnv ''AppEnv
 
-appImpl :: (Has ConnectionPool env, Has SlackWebhookURL (AppEnv env)) => App env
+appImpl :: (Has ConnectionPool env, Has SlackWebhookURL env) => App env
 appImpl = mapBaseRIO (AppEnv inqueryRepoImpl slackAPIImpl . Extends) $ App app
