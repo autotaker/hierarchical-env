@@ -1,5 +1,8 @@
 # Revision history for hierarchical-env
 
+## 0.2.0.1 -- 2021-05-08
+* Relax library dependency (`method`)
+
 ## 0.2.0.0 -- 2021-04-28
 * Change how to specify the super environment
   * Before: Specify by adding type instance for `Super env`
