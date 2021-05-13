@@ -72,6 +72,7 @@ data Root = Root
 
 -- | Wrapper that represents the super environment.
 newtype Extends env = Extends env
+  deriving (Eq, Ord, Show)
 
 {-# INLINE extendsL #-}
 extendsL :: Lens' (Extends x) x
