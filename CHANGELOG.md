@@ -1,5 +1,8 @@
 # Revision history for hierarchical-env
 
+## 0.2.0.2 -- 2021-05-13
+* Add `Eq` `Ord` `Show` instances for `Extends`
+
 ## 0.2.0.1 -- 2021-05-08
 * Relax library dependency (`method`)
 

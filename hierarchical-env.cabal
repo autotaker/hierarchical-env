@@ -5,7 +5,7 @@ cabal-version:      2.4
 -- http://haskell.org/cabal/users-guide/
 
 name:               hierarchical-env
-version:            0.2.0.1
+version:            0.2.0.2
 synopsis:           hierarchical environments for dependency injection
 description:
   This library provides scalable dependency injection for RIO monad
